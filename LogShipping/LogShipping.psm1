@@ -490,8 +490,9 @@ function Reset-SQLWebRMSLogShipping {
     $PrimaryServer='ProdSQL01.ss911.net'
     $SecondaryServer='StandbySQL01.ss911.net'
 
-    $result = $PrimaryServer -match "\w+" 
-    $ServerName = $matches[0] 
+    if ($PrimaryServer -match "\w+") {
+        $ServerName = $matches[0] 
+    }
 
     $Now = get-date -Format "yyyy_MM_dd_hhmmss"
 
@@ -575,7 +576,7 @@ function Reset-AllSQLMainLogShipping {
     $List = invoke-sqlcmd -ServerInstance standbysql03.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor'
     set-location c:\
 
-    $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | % {
+    $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | ForEach-Object {
         write-host "----------------------------------------------------------------------------------------"
         write-host ("Resetting Log Shipping for {0}" -f $_.Database_Name)
         write-host ""
@@ -588,7 +589,7 @@ function Reset-AllSQLWarehouseLogShipping {
     $List = invoke-sqlcmd -ServerInstance standbysql02.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor'
     set-location c:\
 
-    $List | ? {$_.time_since_last_restore -gt $_.restore_threshold} | % {
+    $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | ForEach-Object {
         write-host "----------------------------------------------------------------------------------------"
         write-host ("Resetting Log Shipping for {0}" -f $_.Database_Name)
         write-host ""
@@ -601,7 +602,7 @@ function Reset-AllSQLWebRMSLogShipping {
     $List = invoke-sqlcmd -ServerInstance standbysql01.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor'
     set-location c:\
 
-    $List | ? {$_.time_since_last_restore -gt $_.restore_threshold} | % {
+    $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | ForEach-Object {
         write-host "----------------------------------------------------------------------------------------"
         write-host ("Resetting Log Shipping for {0}" -f $_.Database_Name)
         write-host ""
