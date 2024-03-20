@@ -1,4 +1,6 @@
-﻿$PrimaryScript=@"
+﻿Import-Module SqlServer
+
+$PrimaryScript=@"
 DECLARE @LS_BackupJobId	AS uniqueidentifier 
 DECLARE @LS_PrimaryId	AS uniqueidentifier 
 DECLARE @SP_Add_RetCode	As int 
@@ -273,7 +275,8 @@ with file = 1, replace, standby = N'<LogFilePath><DatabaseName>_undo.bak'
 
         # Initial database restore to secondary in standby mode
         write-host "Restoring database backup $LastFullBackup onto $SecondaryServerName"
-        & sqlcmd -S $SecondaryServerName -E -Q $Restore
+        invoke-sqlcmd -ServerInstance $SecondaryServerName -Database master -Query $Restore -TrustServerCertificate
+        #& sqlcmd -S $SecondaryServerName -E -Q $Restore
     }
 
     # Configure log shipping on Primary
@@ -417,7 +420,8 @@ function Reset-SQLMainLogShipping {
     Remove-LogShipping -PrimaryServer $PrimaryServer -SecondaryServer $SecondaryServer -DatabaseName $DatabaseName
 
     $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-    & sqlcmd -S $PrimaryServer -E -Q $SQL
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate
+    #& sqlcmd -S $PrimaryServer -E -Q $SQL
 
     Add-LogShipping -PrimaryServerName $PrimaryServer -SecondaryServerName $SecondaryServer -BackupInterval 15 -RestoreInterval 60 -StartTime "000000" -EndTime "235900" -DatabaseName $DatabaseName -BackupThreshold 60 -RestoreThreshold 180 
 
@@ -457,7 +461,8 @@ function Reset-SQLWarehouseLogShipping {
     Remove-LogShipping -PrimaryServer $PrimaryServer -SecondaryServer $SecondaryServer -DatabaseName $DatabaseName
 
     $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-    & sqlcmd -S $PrimaryServer -E -Q $SQL
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate
+    #& sqlcmd -S $PrimaryServer -E -Q $SQL
 
     Add-LogShipping -PrimaryServerName $PrimaryServer -SecondaryServerName $SecondaryServer -BackupInterval 15 -RestoreInterval 60 -StartTime "000000" -EndTime "235900" -DatabaseName $DatabaseName -BackupThreshold 60 -RestoreThreshold 180 
 
@@ -499,7 +504,8 @@ function Reset-SQLWebRMSLogShipping {
     Remove-LogShipping -PrimaryServer $PrimaryServer -SecondaryServer $SecondaryServer -DatabaseName $DatabaseName
 
     $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-    & sqlcmd -S $PrimaryServer -E -Q $SQL
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate
+    #& sqlcmd -S $PrimaryServer -E -Q $SQL
 
     if ($DatabaseName -eq "NetRMS") {
         Add-LogShipping -PrimaryServerName $PrimaryServer -SecondaryServerName $SecondaryServer -BackupInterval 5 -RestoreInterval 60 -StartTime "000000" -EndTime "235900" -DatabaseName $DatabaseName -BackupThreshold 60 -RestoreThreshold 180 
@@ -615,7 +621,6 @@ function Reset-LogShipping {
 
 }
 
-# Requires sqlcmd.exe
 function Backup-Database {
     param (
         [string]$ServerName,
@@ -630,7 +635,9 @@ function Backup-Database {
         $Now = get-date -Format "yyyy_MM_dd_hhmmss"
 
         $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-        & sqlcmd -S $ServerName -E -Q $SQL
+        invoke-sqlcmd -ServerInstance $ServerName -Database master -Query $SQL -TrustServerCertificate
+        #& sqlcmd -S $ServerName -E -Q $SQL
+
     }
     else {
         write-warning "Invalid Server Name"
