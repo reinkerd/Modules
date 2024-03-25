@@ -204,6 +204,8 @@ function Add-LogShipping {
     )
 
 $Restore=@"
+# If the database is not in restore mode put it in single_user mode so we can restore over top of it.
+if (select restore_mode from msdbo.dbo.log_shipping_secondary_databases where secondary_database = '<DatabaseName>' ) <> '1'
 alter database <DatabaseName> set single_user with rollback after 30 seconds
 go
 restore database <DatabaseName> from disk=N'\\nas01.lesa.net\sqlbackups\<ServerFolder>\<DatabaseName>\<LastFullBackup>' 
