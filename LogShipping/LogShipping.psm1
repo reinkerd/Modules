@@ -250,11 +250,11 @@ with file = 1, replace, standby = N'<LogFilePath><DatabaseName>_undo.bak'
     if (-not $NoRestore)
     {
         # Obtain secondary server default database file and log file paths
-        $Paths = invoke-sqlcmd -ServerInstance $SecondaryServerName -Database master -Query "select Data = serverproperty('InstanceDefaultDataPath'), [Log] = serverproperty('InstanceDefaultLogPath')"
+        $Paths = invoke-sqlcmd -ServerInstance $SecondaryServerName -Database master -Query "select Data = serverproperty('InstanceDefaultDataPath'), [Log] = serverproperty('InstanceDefaultLogPath')" -TrustServerCertificate -QueryTimeout 0
         set-location c:\
 
         # Obtain primary server data and log file names
-        $physicalfiles = Invoke-Sqlcmd -ServerInstance $PrimaryServerName -query "select name, data_space_id from sys.master_files where database_id = db_id('$DatabaseName')"
+        $physicalfiles = Invoke-Sqlcmd -ServerInstance $PrimaryServerName -query "select name, data_space_id from sys.master_files where database_id = db_id('$DatabaseName')" -TrustServerCertificate -QueryTimeout 0
         set-location c:\
 
         foreach ($file in $physicalfiles)
@@ -275,17 +275,17 @@ with file = 1, replace, standby = N'<LogFilePath><DatabaseName>_undo.bak'
 
         # Initial database restore to secondary in standby mode
         write-host "Restoring database backup $LastFullBackup onto $SecondaryServerName"
-        invoke-sqlcmd -ServerInstance $SecondaryServerName -Database master -Query $Restore -TrustServerCertificate
+        invoke-sqlcmd -ServerInstance $SecondaryServerName -Database master -Query $Restore -TrustServerCertificate -QueryTimeout 0
         #& sqlcmd -S $SecondaryServerName -E -Q $Restore
     }
 
     # Configure log shipping on Primary
     write-host "Configuring log shipping on $PrimaryServerName"
-    invoke-sqlcmd -ServerInstance $PrimaryServerName -Query $PrimaryScript
+    invoke-sqlcmd -ServerInstance $PrimaryServerName -Query $PrimaryScript -TrustServerCertificate -QueryTimeout 0
     
     # Configure log shipping on Standby
     write-host "Configuring log shipping on $SecondaryServerName"
-    invoke-sqlcmd -ServerInstance $SecondaryServerName -Query $SecondaryScript
+    invoke-sqlcmd -ServerInstance $SecondaryServerName -Query $SecondaryScript -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 }
 
@@ -296,16 +296,16 @@ function Remove-LogShipping
     write-host "Removing Log Shipping for $PrimaryServer/$DatabaseName"
 
     $sql = "exec sp_delete_log_shipping_secondary_database @secondary_database='{0}'" -f $DatabaseName
-    Invoke-Sqlcmd -ServerInstance $SecondaryServer -Database master -Query $sql
+    Invoke-Sqlcmd -ServerInstance $SecondaryServer -Database master -Query $sql -TrustServerCertificate -QueryTimeout 0
 
     $sql = "exec sp_delete_log_shipping_secondary_primary @primary_server='{0}', @primary_database='{1}'" -f $PrimaryServer, $DatabaseName
-    Invoke-Sqlcmd -ServerInstance $SecondaryServer -Database master -Query $sql
+    Invoke-Sqlcmd -ServerInstance $SecondaryServer -Database master -Query $sql -TrustServerCertificate -QueryTimeout 0
 
     $sql = "exec sp_delete_log_shipping_primary_secondary @primary_database='{0}', @secondary_server='{1}', @secondary_database='{2}'" -f $DatabaseName, $SecondaryServer, $DatabaseName
-    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $sql
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $sql -TrustServerCertificate -QueryTimeout 0
 
     $sql = "exec sp_delete_log_shipping_primary_database @database='{0}'" -f $DatabaseName
-    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $sql
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $sql -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 }
 
@@ -324,7 +324,7 @@ function Remove-LogShipping
 function Add-SQLMainLogShipping
 {
 
-    $Databases = invoke-sqlcmd -ServerInstance ProdSQL03.ss911.net -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')"
+    $Databases = invoke-sqlcmd -ServerInstance ProdSQL03.ss911.net -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')" -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     foreach ($Database in $Databases)
@@ -349,7 +349,7 @@ function Add-SQLMainLogShipping
 function Add-SQLWarehouseLogShipping
 {
 
-    $Databases = invoke-sqlcmd -ServerInstance ProdSQL02.ss911.net -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')"
+    $Databases = invoke-sqlcmd -ServerInstance ProdSQL02.ss911.net -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')" -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     foreach ($Database in $Databases)
@@ -374,7 +374,7 @@ function Add-SQLWarehouseLogShipping
 function Add-SQLWebRMSLogShipping
 {
 
-    $Databases = invoke-sqlcmd -ServerInstance ProdSQL01.ss911.net -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb','netrms')"
+    $Databases = invoke-sqlcmd -ServerInstance ProdSQL01.ss911.net -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb','netrms')" -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     foreach ($Database in $Databases)
@@ -420,7 +420,7 @@ function Reset-SQLMainLogShipping {
     Remove-LogShipping -PrimaryServer $PrimaryServer -SecondaryServer $SecondaryServer -DatabaseName $DatabaseName
 
     $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate -QueryTimeout 0
     #& sqlcmd -S $PrimaryServer -E -Q $SQL
 
     Add-LogShipping -PrimaryServerName $PrimaryServer -SecondaryServerName $SecondaryServer -BackupInterval 15 -RestoreInterval 60 -StartTime "000000" -EndTime "235900" -DatabaseName $DatabaseName -BackupThreshold 60 -RestoreThreshold 180 
@@ -461,7 +461,7 @@ function Reset-SQLWarehouseLogShipping {
     Remove-LogShipping -PrimaryServer $PrimaryServer -SecondaryServer $SecondaryServer -DatabaseName $DatabaseName
 
     $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate -QueryTimeout 0
     #& sqlcmd -S $PrimaryServer -E -Q $SQL
 
     Add-LogShipping -PrimaryServerName $PrimaryServer -SecondaryServerName $SecondaryServer -BackupInterval 15 -RestoreInterval 60 -StartTime "000000" -EndTime "235900" -DatabaseName $DatabaseName -BackupThreshold 60 -RestoreThreshold 180 
@@ -504,7 +504,7 @@ function Reset-SQLWebRMSLogShipping {
     Remove-LogShipping -PrimaryServer $PrimaryServer -SecondaryServer $SecondaryServer -DatabaseName $DatabaseName
 
     $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate
+    invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -Query $SQL -TrustServerCertificate -QueryTimeout 0
     #& sqlcmd -S $PrimaryServer -E -Q $SQL
 
     if ($DatabaseName -eq "NetRMS") {
@@ -528,7 +528,7 @@ function ReconfigureSQLMainLogShipping
     $PrimaryServer='ProdSQL03.ss911.net'
     $SecondaryServer='StandbySQL03.ss911.net'
 
-    $Databases = invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')"
+    $Databases = invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')" -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     foreach ($Database in $Databases)
@@ -546,7 +546,7 @@ function ReconfigureSQLWebRMSLogShipping
     $PrimaryServer='ProdSQL01.ss911.net'
     $SecondaryServer='StandbySQL01.ss911.net'
 
-    $Databases = invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb','NetRMS')"
+    $Databases = invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb','NetRMS')" -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     foreach ($Database in $Databases)
@@ -566,7 +566,7 @@ function ReconfigureSQLWarehouseLogShipping
     $PrimaryServer='ProdSQL02.ss911.net'
     $SecondaryServer='StandbySQL02.ss911.net'
 
-    $Databases = invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')"
+    $Databases = invoke-sqlcmd -ServerInstance $PrimaryServer -Database master -query "select Name from sysdatabases where name not in ('master','tempdb','model','msdb')" -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     foreach ($Database in $Databases)
@@ -579,7 +579,7 @@ function ReconfigureSQLWarehouseLogShipping
 
 function Reset-AllSQLMainLogShipping {
 
-    $List = invoke-sqlcmd -ServerInstance standbysql03.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor'
+    $List = invoke-sqlcmd -ServerInstance standbysql03.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor' -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | ForEach-Object {
@@ -592,7 +592,7 @@ function Reset-AllSQLMainLogShipping {
 
 function Reset-AllSQLWarehouseLogShipping {
 
-    $List = invoke-sqlcmd -ServerInstance standbysql02.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor'
+    $List = invoke-sqlcmd -ServerInstance standbysql02.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor' -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | ForEach-Object {
@@ -605,7 +605,7 @@ function Reset-AllSQLWarehouseLogShipping {
 
 function Reset-AllSQLWebRMSLogShipping {
 
-    $List = invoke-sqlcmd -ServerInstance standbysql01.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor'
+    $List = invoke-sqlcmd -ServerInstance standbysql01.ss911.net -Database master -Query 'exec sp_help_log_shipping_monitor' -TrustServerCertificate -QueryTimeout 0
     set-location c:\
 
     $List | Where-Object {$_.time_since_last_restore -gt $_.restore_threshold} | ForEach-Object {
@@ -635,7 +635,7 @@ function Backup-Database {
         $Now = get-date -Format "yyyy_MM_dd_hhmmss"
 
         $SQL = "backup database [{0}] to disk='\\nas01.lesa.net\sqlbackups\{1}\{0}\{0}_backup_{2}.bak'" -f $DatabaseName, $ServerName, $Now
-        invoke-sqlcmd -ServerInstance $ServerName -Database master -Query $SQL -TrustServerCertificate
+        invoke-sqlcmd -ServerInstance $ServerName -Database master -Query $SQL -TrustServerCertificate -QueryTimeout 0
         #& sqlcmd -S $ServerName -E -Q $SQL
 
     }
